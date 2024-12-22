@@ -1,0 +1,229 @@
+
+#include <iostream>
+#include <fstream>
+#include <vector>
+#include <sstream>
+#include <iomanip>
+using namespace std;
+
+// File paths
+const string MENU_FILE = "menu.txt";
+const string ORDERS_FILE = "orders.txt";
+
+// Structs for menu items and orders
+struct MenuItem {
+    int id;
+    string name;
+    double price;
+};
+
+struct Order {
+    int id;
+    string name;
+    double price;
+    int quantity;
+};
+
+// Global data storage
+vector<MenuItem> menuItems;
+vector<Order> activeOrders;
+
+// Function prototypes
+void loadMenuFromFile();
+void saveMenuToFile();
+void loadOrdersFromFile();
+void saveOrdersToFile();
+void displayMenu();
+void addMenuItem();
+void takeOrder();
+void displayOrders();
+void generateBill();
+void clearOrders();
+
+int main() {
+    loadMenuFromFile();
+    loadOrdersFromFile();
+
+    int choice;
+    do {
+        cout << "\nRestaurant Management System\n";
+        cout << "1. Display Menu\n";
+        cout << "2. Add Menu Item\n";
+        cout << "3. Take Order\n";
+        cout << "4. Display Orders\n";
+        cout << "5. Generate Bill\n";
+        cout << "6. Clear Orders\n";
+        cout << "7. Exit\n";
+        cout << "Enter your choice: ";
+        cin >> choice;
+
+        switch (choice) {
+        case 1: displayMenu(); break;
+        case 2: addMenuItem(); break;
+        case 3: takeOrder(); break;
+        case 4: displayOrders(); break;
+        case 5: generateBill(); break;
+        case 6: clearOrders(); break;
+        case 7: cout << "Exiting...\n"; break;
+        default: cout << "Invalid choice! Try again.\n";
+        }
+    } while (choice != 7);
+
+    return 0;
+}
+
+// Load menu from file
+void loadMenuFromFile() {
+    ifstream inFile(MENU_FILE);
+    if (!inFile) {
+        cout << "No menu file found. Starting with an empty menu.\n";
+        return;
+    }
+    menuItems.clear();
+    string line;
+    while (getline(inFile, line)) {
+        stringstream ss(line);
+        MenuItem item;
+        char comma;
+        ss >> item.id >> comma;
+        getline(ss, item.name, ',');
+        ss >> item.price;
+        menuItems.push_back(item);
+    }
+    inFile.close();
+}
+
+// Save menu to file
+void saveMenuToFile() {
+    ofstream outFile(MENU_FILE);
+    if (!outFile) {
+        cout << "Error saving menu to file.\n";
+        return;
+    }
+    for (const auto& item : menuItems) {
+        outFile << item.id << "," << item.name << "," << item.price << "\n";
+    }
+    outFile.close();
+}
+
+// Load orders from file
+void loadOrdersFromFile() {
+    ifstream inFile(ORDERS_FILE);
+    if (!inFile) {
+        cout << "No orders file found. Starting with empty orders.\n";
+        return;
+    }
+    activeOrders.clear();
+    string line;
+    while (getline(inFile, line)) {
+        stringstream ss(line);
+        Order order;
+        char comma;
+        ss >> order.id >> comma;
+        getline(ss, order.name, ',');
+        ss >> order.price >> comma >> order.quantity;
+        activeOrders.push_back(order);
+    }
+    inFile.close();
+}
+
+// Save orders to file
+void saveOrdersToFile() {
+    ofstream outFile(ORDERS_FILE);
+    if (!outFile) {
+        cout << "Error saving orders to file.\n";
+        return;
+    }
+    for (const auto& order : activeOrders) {
+        outFile << order.id << "," << order.name << "," << order.price << "," << order.quantity << "\n";
+    }
+    outFile.close();
+}
+
+// Display menu
+void displayMenu() {
+    if (menuItems.empty()) {
+        cout << "No items in the menu.\n";
+        return;
+    }
+    cout << "\nMenu:\n";
+    for (const auto& item : menuItems) {
+        cout << item.id << ". " << item.name << " - $" << fixed << setprecision(2) << item.price << "\n";
+    }
+}
+
+// Add menu item
+void addMenuItem() {
+    MenuItem item;
+    cout << "Enter item ID: ";
+    cin >> item.id;
+    cin.ignore(); // Ignore newline character
+    cout << "Enter item name: ";
+    getline(cin, item.name);
+    cout << "Enter item price: ";
+    cin >> item.price;
+    menuItems.push_back(item);
+    saveMenuToFile();
+    cout << "Menu item added successfully.\n";
+}
+
+// Take order
+void takeOrder() {
+    int id, quantity;
+    cout << "Enter item ID to order: ";
+    cin >> id;
+    auto it = find_if(menuItems.begin(), menuItems.end(), [id](const MenuItem& item) {
+        return item.id == id;
+        });
+    if (it == menuItems.end()) {
+        cout << "Item not found in menu.\n";
+        return;
+    }
+    cout << "Enter quantity: ";
+    cin >> quantity;
+    activeOrders.push_back({ it->id, it->name, it->price, quantity });
+    saveOrdersToFile();
+    cout << "Order placed successfully.\n";
+}
+
+// Display orders
+void displayOrders() {
+    if (activeOrders.empty()) {
+        cout << "No active orders.\n";
+        return;
+    }
+    cout << "\nActive Orders:\n";
+    cout << setw(10) << "Order ID" << setw(20) << "Item Name" << setw(10) << "Price"
+        << setw(10) << "Quantity" << setw(15) << "Subtotal" << "\n";
+    for (const auto& order : activeOrders) {
+        double subtotal = order.price * order.quantity;
+        cout << setw(10) << order.id
+            << setw(20) << order.name
+            << setw(10) << fixed << setprecision(2) << order.price
+            << setw(10) << order.quantity
+            << setw(15) << subtotal << "\n";
+    }
+}
+
+// Generate bill
+void generateBill() {
+    if (activeOrders.empty()) {
+        cout << "No active orders to generate bill.\n";
+        return;
+    }
+    double total = 0;
+    cout << "\nBill:\n";
+    for (const auto& order : activeOrders) {
+        double subtotal = order.price * order.quantity;
+        cout << order.quantity << " x " << order.name << " @ $" << order.price << " = $" << subtotal << "\n";
+        total += subtotal;
+    }
+    cout << "Total: $" << total << "\n";
+}
+
+// Clear orders
+void clearOrders() {
+    activeOrders.clear();
+    saveOrdersToFile();
+    cout << "All orders cleared.\n";
+}
